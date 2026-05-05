@@ -16,17 +16,23 @@ Business value:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    Docs["Local markdown documents"] --> Ingest["Ingestion API"]
-    Ingest --> SQLite["SQLite metadata and chunks"]
-    User["User or dashboard"] --> API["FastAPI query API"]
-    API --> RBAC["Role filter"]
-    RBAC --> Retriever["Lexical retriever"]
-    Retriever --> Generator["Mock answer generator"]
-    Generator --> Response["Answer with citations"]
-    API --> Metrics["Query logs and evaluation runs"]
-    Metrics --> SQLite
+```text
+Local documents
+      |
+      v
+Ingestion API  --->  Metadata and chunk store
+      |
+      v
+FastAPI query API  <---  Dashboard / API clients
+      |
+      v
+Role-based access filter
+      |
+      v
+Retriever  --->  Answer generator
+      |                  |
+      v                  v
+Citations, metrics, query logs, and evaluation results
 ```
 
 See [docs/architecture.md](docs/architecture.md) for local and Azure-ready diagrams.
