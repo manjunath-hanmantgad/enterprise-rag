@@ -1,0 +1,31 @@
+[
+  {
+    "name": "employee_hybrid_policy",
+    "question": "How many days per week can employees work remotely?",
+    "user_role": "employee",
+    "expected_document_ids": ["hr-hybrid-work"],
+    "forbidden_document_ids": ["finance-forecast", "it-incident-response"]
+  },
+  {
+    "name": "engineer_incident_triage",
+    "question": "What is the triage target for security incidents?",
+    "user_role": "engineer",
+    "expected_document_ids": ["it-incident-response"],
+    "forbidden_document_ids": ["finance-forecast"]
+  },
+  {
+    "name": "employee_cannot_retrieve_forecast",
+    "question": "What forecast variance requires a written explanation?",
+    "user_role": "employee",
+    "expected_document_ids": [],
+    "forbidden_document_ids": ["finance-forecast"]
+  },
+  {
+    "name": "finance_forecast_controls",
+    "question": "When does forecast variance require an explanation?",
+    "user_role": "finance",
+    "expected_document_ids": ["finance-forecast"],
+    "forbidden_document_ids": ["it-incident-response"]
+  }
+]
+
