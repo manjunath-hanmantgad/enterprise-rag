@@ -144,22 +144,18 @@ def _load_key_vault_env() -> None:
     secret_names = _parse_csv(os.getenv("KEY_VAULT_SECRET_NAMES", ""))
     if not secret_names:
         return
-    required = {
-        "AZURE_KEY_VAULT_URL": os.getenv("AZURE_KEY_VAULT_URL", ""),
-        "AZURE_TENANT_ID": os.getenv("AZURE_TENANT_ID", ""),
-        "AZURE_CLIENT_ID": os.getenv("AZURE_CLIENT_ID", ""),
-        "AZURE_CLIENT_SECRET": os.getenv("AZURE_CLIENT_SECRET", ""),
-    }
-    missing = [name for name, value in required.items() if not value]
-    if missing:
-        raise RuntimeError(f"KEY_VAULT_SECRET_NAMES is set but Key Vault configuration is missing: {', '.join(missing)}.")
+    vault_url = os.getenv("AZURE_KEY_VAULT_URL", "")
+    if not vault_url:
+        raise RuntimeError("KEY_VAULT_SECRET_NAMES is set but AZURE_KEY_VAULT_URL is missing.")
     mappings = _parse_secret_mappings(os.getenv("KEY_VAULT_SECRET_MAPPINGS", ""))
     override_existing = os.getenv("KEY_VAULT_OVERRIDE_EXISTING", "false").lower() == "true"
+    # Auth: DefaultAzureCredential is tried first (Azure Container Apps with Managed Identity).
+    # AZURE_CLIENT_ID/SECRET are optional — used only as local dev fallback.
     secrets = get_key_vault_secrets(
-        required["AZURE_KEY_VAULT_URL"],
-        required["AZURE_TENANT_ID"],
-        required["AZURE_CLIENT_ID"],
-        required["AZURE_CLIENT_SECRET"],
+        vault_url,
+        os.getenv("AZURE_TENANT_ID", ""),
+        os.getenv("AZURE_CLIENT_ID", ""),
+        os.getenv("AZURE_CLIENT_SECRET", ""),
         secret_names,
     )
     for secret_name, secret_value in secrets.items():

@@ -7,9 +7,15 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+# Runtime databases - never commit
+*.db
+*.db-shm
+*.db-wal
 storage/*.db
 storage/*.db.wal
 storage/*.db-shm
+storage/*.db-wal
+data/*.db
 storage/*.sqlite
 storage/*.duckdb
 demo/*.png

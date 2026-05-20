@@ -1,0 +1,169 @@
+{
+  "version": "1.0",
+  "project": "enterprise-rag",
+  "cases": [
+    {
+      "id": "retrieval-001",
+      "description": "hybrid work query retrieves HR policy first",
+      "category": "retrieval",
+      "input": {
+        "query": "How many days can employees work remotely each week?",
+        "top_k": 2,
+        "candidates": [
+          {"document_id": "hr-hybrid-work", "content": "Employees may work remotely up to three days per week with manager approval."},
+          {"document_id": "finance-forecast", "content": "Forecast variance above five percent requires written explanation."}
+        ]
+      },
+      "expected": {"expected_document_ids": ["hr-hybrid-work"], "min_precision": 0.5, "min_recall": 1.0},
+      "requires_live_llm": false
+    },
+    {
+      "id": "retrieval-002",
+      "description": "incident triage query retrieves incident response document",
+      "category": "retrieval",
+      "input": {
+        "query": "What is the triage target for security incidents?",
+        "top_k": 1,
+        "candidates": [
+          {"document_id": "it-incident-response", "content": "Critical incidents must be triaged within 30 minutes and escalated to the on-call engineer."},
+          {"document_id": "hr-hybrid-work", "content": "Remote work policy applies to eligible employees only."}
+        ]
+      },
+      "expected": {"expected_document_ids": ["it-incident-response"], "min_precision": 1.0, "min_recall": 1.0},
+      "requires_live_llm": false
+    },
+    {
+      "id": "retrieval-003",
+      "description": "unmatched query has empty retrieval set",
+      "category": "retrieval",
+      "input": {
+        "query": "xylophone quantum nebula",
+        "top_k": 3,
+        "candidates": [
+          {"document_id": "finance-forecast", "content": "Forecast variance controls for monthly close."},
+          {"document_id": "it-incident-response", "content": "Escalation matrix for security incidents."}
+        ]
+      },
+      "expected": {"expected_document_ids": [], "min_precision": 1.0, "min_recall": 1.0},
+      "requires_live_llm": false
+    },
+    {
+      "id": "retrieval-004",
+      "description": "query covering two topics returns both policy documents",
+      "category": "retrieval",
+      "input": {
+        "query": "forecast explanation and incident escalation requirements",
+        "top_k": 2,
+        "candidates": [
+          {"document_id": "finance-forecast", "content": "Forecast variance above five percent requires written explanation and finance sign-off."},
+          {"document_id": "it-incident-response", "content": "Incident escalation requires notifying security lead and on-call engineer."},
+          {"document_id": "hr-hybrid-work", "content": "Employees may work remotely up to three days weekly."}
+        ]
+      },
+      "expected": {
+        "expected_document_ids": ["finance-forecast", "it-incident-response"],
+        "min_precision": 1.0,
+        "min_recall": 1.0
+      },
+      "requires_live_llm": false
+    },
+    {
+      "id": "access-001",
+      "description": "finance role is valid and allowed on finance documents",
+      "category": "access_control",
+      "input": {"user_role": "finance", "allowed_roles": ["finance"]},
+      "expected": {"role_valid": true, "access_granted": true},
+      "requires_live_llm": false
+    },
+    {
+      "id": "access-002",
+      "description": "employee role is valid but blocked from finance-only document",
+      "category": "access_control",
+      "input": {"user_role": "employee", "allowed_roles": ["finance"]},
+      "expected": {"role_valid": true, "access_granted": false},
+      "requires_live_llm": false
+    },
+    {
+      "id": "access-003",
+      "description": "admin role can access all-role document",
+      "category": "access_control",
+      "input": {"user_role": "admin", "allowed_roles": ["all"]},
+      "expected": {"role_valid": true, "access_granted": true},
+      "requires_live_llm": false
+    },
+    {
+      "id": "access-004",
+      "description": "unknown role is invalid and blocked",
+      "category": "access_control",
+      "input": {"user_role": "contractor", "allowed_roles": ["engineer", "finance"]},
+      "expected": {"role_valid": false, "access_granted": false},
+      "requires_live_llm": false
+    },
+    {
+      "id": "citation-001",
+      "description": "finance user receives finance citation and no incident leak",
+      "category": "citation",
+      "input": {
+        "question": "When does forecast variance require explanation?",
+        "user_role": "finance",
+        "top_k": 3,
+        "documents": [
+          {"id": "finance-forecast", "title": "Finance Forecast Controls"},
+          {"id": "it-incident-response", "title": "Incident Response"}
+        ],
+        "chunks": [
+          {
+            "chunk_id": "c-fin-1",
+            "document_id": "finance-forecast",
+            "content": "Forecast variance above five percent requires written explanation and controller sign-off.",
+            "allowed_roles": "finance"
+          },
+          {
+            "chunk_id": "c-it-1",
+            "document_id": "it-incident-response",
+            "content": "Critical incidents must be triaged within thirty minutes.",
+            "allowed_roles": "engineer"
+          }
+        ]
+      },
+      "expected": {
+        "expected_document_ids": ["finance-forecast"],
+        "forbidden_document_ids": ["it-incident-response"]
+      },
+      "requires_live_llm": false
+    },
+    {
+      "id": "citation-002",
+      "description": "employee cannot receive finance-only citation",
+      "category": "citation",
+      "input": {
+        "question": "What forecast variance requires explanation?",
+        "user_role": "employee",
+        "top_k": 3,
+        "documents": [
+          {"id": "finance-forecast", "title": "Finance Forecast Controls"},
+          {"id": "hr-hybrid-work", "title": "Hybrid Work"}
+        ],
+        "chunks": [
+          {
+            "chunk_id": "c-fin-2",
+            "document_id": "finance-forecast",
+            "content": "Forecast variance above five percent requires written explanation.",
+            "allowed_roles": "finance"
+          },
+          {
+            "chunk_id": "c-hr-2",
+            "document_id": "hr-hybrid-work",
+            "content": "Employees may work remotely up to three days per week.",
+            "allowed_roles": "employee,engineer,finance,admin"
+          }
+        ]
+      },
+      "expected": {
+        "expected_document_ids": [],
+        "forbidden_document_ids": ["finance-forecast"]
+      },
+      "requires_live_llm": false
+    }
+  ]
+}

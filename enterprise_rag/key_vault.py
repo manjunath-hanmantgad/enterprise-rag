@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+from azure.identity import DefaultAzureCredential
 
 
 def get_client_credentials_token(tenant_id: str, client_id: str, client_secret: str, scope: str) -> str:
@@ -33,10 +34,27 @@ def get_key_vault_secret(vault_url: str, secret_name: str, access_token: str) ->
 
 def get_key_vault_secrets(
     vault_url: str,
-    tenant_id: str,
-    client_id: str,
-    client_secret: str,
-    secret_names: list[str],
+    tenant_id: str = "",
+    client_id: str = "",
+    client_secret: str = "",
+    secret_names: list[str] | None = None,
 ) -> dict[str, str]:
-    token = get_client_credentials_token(tenant_id, client_id, client_secret, "https://vault.azure.net/.default")
-    return {name: get_key_vault_secret(vault_url, name, token) for name in secret_names}
+    if not secret_names:
+        return {}
+
+    # Primary: DefaultAzureCredential — works automatically in Azure Container Apps with Managed Identity.
+    try:
+        token = DefaultAzureCredential().get_token("https://vault.azure.net/.default").token
+        return {name: get_key_vault_secret(vault_url, name, token) for name in secret_names}
+    except Exception:
+        pass
+
+    # Fallback: client credentials for local dev when client_secret is configured.
+    if tenant_id and client_id and client_secret:
+        token = get_client_credentials_token(tenant_id, client_id, client_secret, "https://vault.azure.net/.default")
+        return {name: get_key_vault_secret(vault_url, name, token) for name in secret_names}
+
+    raise RuntimeError(
+        "Key Vault authentication failed: DefaultAzureCredential did not succeed "
+        "and AZURE_CLIENT_SECRET is not configured for local dev fallback."
+    )

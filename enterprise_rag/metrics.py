@@ -2,7 +2,33 @@ from __future__ import annotations
 
 import sqlite3
 
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
+
 from enterprise_rag.config import Settings
+
+
+_REGISTRY = CollectorRegistry(auto_describe=True)
+_NS = "enterprise_rag"
+
+documents_total = Gauge(f"{_NS}_documents_total", "Total ingested documents.", registry=_REGISTRY)
+chunks_total = Gauge(f"{_NS}_chunks_total", "Total ingested chunks.", registry=_REGISTRY)
+queries_total = Gauge(f"{_NS}_queries_total", "Total persisted queries.", registry=_REGISTRY)
+query_latency_average_ms = Gauge(
+    f"{_NS}_query_latency_average_ms",
+    "Average persisted query latency in milliseconds.",
+    registry=_REGISTRY,
+)
+restricted_leaks_total = Gauge(
+    f"{_NS}_restricted_leaks_total",
+    "Total restricted retrieval leaks observed in evaluation runs.",
+    registry=_REGISTRY,
+)
+retrieval_provider_info = Gauge(
+    f"{_NS}_retrieval_provider_info",
+    "Active retrieval provider.",
+    ["provider"],
+    registry=_REGISTRY,
+)
 
 
 def prometheus_metrics(conn: sqlite3.Connection, settings: Settings) -> str:
@@ -13,24 +39,12 @@ def prometheus_metrics(conn: sqlite3.Connection, settings: Settings) -> str:
     restricted_leaks = conn.execute(
         "SELECT COALESCE(SUM(restricted_leak_count), 0) FROM evaluation_runs"
     ).fetchone()[0]
-    lines = [
-        "# HELP enterprise_rag_documents_total Total ingested documents.",
-        "# TYPE enterprise_rag_documents_total gauge",
-        f"enterprise_rag_documents_total {document_count}",
-        "# HELP enterprise_rag_chunks_total Total ingested chunks.",
-        "# TYPE enterprise_rag_chunks_total gauge",
-        f"enterprise_rag_chunks_total {chunk_count}",
-        "# HELP enterprise_rag_queries_total Total persisted queries.",
-        "# TYPE enterprise_rag_queries_total counter",
-        f"enterprise_rag_queries_total {query_count}",
-        "# HELP enterprise_rag_query_latency_average_ms Average persisted query latency in milliseconds.",
-        "# TYPE enterprise_rag_query_latency_average_ms gauge",
-        f"enterprise_rag_query_latency_average_ms {float(average_latency_ms):.2f}",
-        "# HELP enterprise_rag_restricted_leaks_total Total restricted retrieval leaks observed in evaluation runs.",
-        "# TYPE enterprise_rag_restricted_leaks_total counter",
-        f"enterprise_rag_restricted_leaks_total {restricted_leaks}",
-        "# HELP enterprise_rag_retrieval_provider_info Active retrieval provider.",
-        "# TYPE enterprise_rag_retrieval_provider_info gauge",
-        f'enterprise_rag_retrieval_provider_info{{provider="{settings.retrieval_provider}"}} 1',
-    ]
-    return "\n".join(lines) + "\n"
+
+    documents_total.set(float(document_count))
+    chunks_total.set(float(chunk_count))
+    queries_total.set(float(query_count))
+    query_latency_average_ms.set(float(average_latency_ms))
+    restricted_leaks_total.set(float(restricted_leaks))
+    retrieval_provider_info.labels(provider=settings.retrieval_provider).set(1)
+
+    return generate_latest(_REGISTRY).decode("utf-8")

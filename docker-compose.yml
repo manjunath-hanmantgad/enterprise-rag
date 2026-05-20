@@ -7,6 +7,8 @@ services:
       - "8002:8000"
     volumes:
       - ./demo:/app/demo
-      - ./storage:/app/storage
+      - rag-storage:/app/storage
     command: uvicorn enterprise_rag.api:app --host 0.0.0.0 --port 8000
 
+volumes:
+  rag-storage:
